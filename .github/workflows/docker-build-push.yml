@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOCKER_IMAGE_NAME: ffmpeg-webhook
+  DOCKER_IMAGE_NAME: ezcaptions-api
 
 jobs:
   build-and-push:
