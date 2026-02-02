@@ -10,6 +10,9 @@ COPY . /app
 WORKDIR /app
 RUN uv sync --frozen --no-cache
 
+# Install ffmpeg
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
+
 # Run the application.
 EXPOSE 9000
 CMD ["/app/.venv/bin/fastapi", "run", "app/app.py", "--port", "9000", "--host", "0.0.0.0"]
