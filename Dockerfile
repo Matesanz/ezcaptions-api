@@ -1,32 +1,15 @@
-FROM debian:bookworm-slim
+FROM python:3.12-slim
 
-# Instalamos webhook, make y Google Cloud SDK
-RUN apt-get update && apt-get install -y \
-    webhook \
-    make \
-    curl \
-    ffmpeg \
-    gnupg \
-    lsb-release \
-    && echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] https://packages.cloud.google.com/apt cloud-sdk main" | tee -a /etc/apt/sources.list.d/google-cloud-sdk.list \
-    && curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key --keyring /usr/share/keyrings/cloud.google.gpg add - \
-    && apt-get update && apt-get install -y google-cloud-cli \
-    && rm -rf /var/lib/apt/lists/*
+# Install uv.
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
+# Copy the application into the container.
+COPY . /app
+
+# Install the application dependencies.
 WORKDIR /app
-RUN mkdir -p ass
-COPY fonts/ fonts/
-COPY scripts/ scripts/
-COPY hooks.json .
-COPY Makefile . 
+RUN uv sync --frozen --no-cache
 
-# Set ROOT environment variable to match project root
-ENV ROOT=/app
-
-# Exponemos el puerto por defecto de webhook
+# Run the application.
 EXPOSE 9000
-
-# Lanzamos el servicio
-# -verbose para ver los logs en la consola de la nube
-# -hooks indica dónde está tu configuración
-CMD ["webhook", "-hooks", "hooks.json", "-verbose", "-port", "9000"]
+CMD ["/app/.venv/bin/fastapi", "run", "app/app.py", "--port", "9000", "--host", "0.0.0.0"]

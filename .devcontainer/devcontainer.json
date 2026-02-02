@@ -1,11 +1,26 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/ubuntu
+// README at: https://github.com/devcontainers/templates/tree/main/src/python
 {
-	"name": "Ubuntu ffmpeg",
+	"name": "Python 3",
 	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
-	"image": "mcr.microsoft.com/devcontainers/base:noble",
+	"image": "mcr.microsoft.com/devcontainers/python:2-3.13-bookworm",
 	"features": {
-		"ghcr.io/devcontainers-extra/features/ffmpeg-apt-get:1": {}
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+	},
+	"postCreateCommand": "apt-get update && apt-get install -y ffmpeg",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"PKief.material-icon-theme",
+				"mhutchie.git-graph",
+				"donjayamanne.githistory",
+				"GitHub.copilot-chat",
+				"seatonjiang.gitmoji-vscode",
+				"GitHub.copilot",
+				"googlecloudtools.cloudcode",
+				"ms-azuretools.vscode-docker"
+			]
+		}
 	}
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
@@ -15,7 +30,7 @@
 	// "forwardPorts": [],
 
 	// Use 'postCreateCommand' to run commands after the container is created.
-	// "postCreateCommand": "uname -a",
+	// "postCreateCommand": "curl -sSL https://sdk.cloud.google.com | bash && exec -l $SHELL",
 
 	// Configure tool-specific properties.
 	// "customizations": {},
