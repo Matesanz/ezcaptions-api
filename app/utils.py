@@ -1,6 +1,6 @@
 from google.cloud import storage
 import os
-from datetime import datetime
+from datetime import timedelta
 import ffmpeg
 from typing import Optional
 import requests
@@ -117,7 +117,7 @@ def create_signed_url(bucket_name: str, blob_name: str, expiration_time: int = 3
     """
 
     # 1. Get default credentials (the attached service account on Cloud Run)
-    credentials, project_id = google.auth.default()
+    credentials, _ = google.auth.default()
 
     # 2. Refresh the credentials to ensure you have a valid access token
     auth_request = Request()
@@ -131,7 +131,7 @@ def create_signed_url(bucket_name: str, blob_name: str, expiration_time: int = 3
     # 4. Generate the signed URL using the token and email
     url = blob.generate_signed_url(
         version="v4",
-        expiration=datetime.timedelta(hours=1),
+        expiration=timedelta(hours=1),
         method="GET",
         # Explicitly pass these to trigger IAM SignBlob instead of local signing
         service_account_email=credentials.service_account_email,
