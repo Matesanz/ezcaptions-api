@@ -1,9 +1,7 @@
 from fastapi import FastAPI
 from . import schemas, services
 
-app = FastAPI(
-    title="Simple API", description="A simple FastAPI application", version="1.0.0"
-)
+app = FastAPI(title="EzCaptions API", description="Simple API to create Captions", version="1.0.0")
 
 
 @app.get("/")

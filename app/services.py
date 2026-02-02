@@ -19,26 +19,16 @@ def burn_and_upload(input_video: str, ass_text: str) -> str:
     temp_video_filename = f"{process_id}.mp4"
     temp_video_burned_filename = f"{process_id}_output.mp4"
 
-    utils.create_text_file(
-        text=ass_text,
-        filename=temp_ass_filename
-    )
-    utils.download_file_from_url(
-        url=input_video,
-        filename=temp_video_filename
-    )
+    utils.create_text_file(text=ass_text, filename=temp_ass_filename)
+    utils.download_file_from_url(url=input_video, filename=temp_video_filename)
     utils.burn_subtitles_to_video(
         input_video=temp_video_filename,
         ass_file=temp_ass_filename,
-        output_video=temp_video_burned_filename
+        output_video=temp_video_burned_filename,
     )
-    utils.upload_to_gcs(
-        file_path=temp_video_burned_filename,
-        bucket_name=settings.BUCKET_NAME
-    )
+    utils.upload_to_gcs(file_path=temp_video_burned_filename, bucket_name=settings.BUCKET_NAME)
     temp_video_burned_url = utils.create_signed_url(
-        bucket_name=settings.BUCKET_NAME,
-        blob_name=temp_video_burned_filename
+        bucket_name=settings.BUCKET_NAME, blob_name=temp_video_burned_filename
     )
     utils.remove_file(temp_ass_filename)
     utils.remove_file(temp_video_filename)

@@ -1,10 +1,13 @@
 from google.cloud import storage
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 import ffmpeg
 from typing import Optional
 import requests
 import uuid
+import google.auth
+from google.auth.transport.requests import Request
+from google.cloud import storage
 
 
 def create_unique_id() -> str:
@@ -100,9 +103,7 @@ def upload_to_gcs(file_path: str, bucket_name: str, blob_name: str = None) -> st
     return f"gs://{bucket_name}/{blob_name}"
 
 
-def create_signed_url(
-    bucket_name: str, blob_name: str, expiration_time: int = 3600
-) -> str:
+def create_signed_url(bucket_name: str, blob_name: str, expiration_time: int = 3600) -> str:
     """
     Creates a signed URL for downloading a file from Google Cloud Storage.
 
@@ -115,19 +116,28 @@ def create_signed_url(
         str: The signed URL for downloading the file
     """
 
-    # Initialize the GCS client
-    client = storage.Client()
-    bucket = client.bucket(bucket_name)
+    # 1. Get default credentials (the attached service account on Cloud Run)
+    credentials, project_id = google.auth.default()
+
+    # 2. Refresh the credentials to ensure you have a valid access token
+    auth_request = Request()
+    credentials.refresh(auth_request)
+
+    # 3. Initialize the storage client
+    storage_client = storage.Client(credentials=credentials)
+    bucket = storage_client.bucket(bucket_name)
     blob = bucket.blob(blob_name)
 
-    # Generate signed URL
-    signed_url = blob.generate_signed_url(
+    # 4. Generate the signed URL using the token and email
+    url = blob.generate_signed_url(
         version="v4",
-        expiration=datetime.now(timezone.utc) + timedelta(seconds=expiration_time),
+        expiration=datetime.timedelta(hours=1),
         method="GET",
+        # Explicitly pass these to trigger IAM SignBlob instead of local signing
+        service_account_email=credentials.service_account_email,
+        access_token=credentials.token,
     )
-
-    return signed_url
+    return url
 
 
 def burn_subtitles_to_video(
@@ -154,9 +164,7 @@ def burn_subtitles_to_video(
 
         # Apply the video filter
         if fonts_directory:
-            stream = ffmpeg.filter(
-                stream, "subtitles", ass_file, fontsdir=fonts_directory
-            )
+            stream = ffmpeg.filter(stream, "subtitles", ass_file, fontsdir=fonts_directory)
         else:
             stream = ffmpeg.filter(stream, "subtitles", ass_file)
 
