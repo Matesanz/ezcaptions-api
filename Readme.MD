@@ -97,8 +97,114 @@ export FONT_PATH="/tu/ruta/personalizada"
 
 ---
 
+
 ## 🐳 Notas para Integración (n8n / Docker)
 
 1. **Fuentes Locales**: Asegúrate de que el contenedor tenga acceso a la carpeta de fuentes definida en `FONT_PATH`.
 2. **Rutas**: Siempre usa rutas absolutas en entornos de automatización para evitar errores de "archivo no encontrado".
 3. **Code Node**: En n8n, utiliza un nodo de código para transformar los milisegundos de la API de AssemblyAI al formato `H:MM:SS.CC` (Centésimas de segundo) que requiere el archivo `.ass`.
+
+---
+
+## ☁️ Integración con Google Cloud Storage
+
+### Configuración
+
+El sistema ahora incluye funcionalidad para subir automáticamente el video procesado a Google Cloud Storage y generar una URL firmada (V4 Signed URL) con validez de 1 hora.
+
+#### 1. Configurar Credenciales de GCP
+
+En Cloud Run, las credenciales se configuran automáticamente. Para desarrollo local, configura:
+
+```bash
+# Opción 1: Usar gcloud auth
+gcloud auth application-default login
+
+# Opción 2: Usar service account
+export GOOGLE_APPLICATION_CREDENTIALS="/path/to/service-account-key.json"
+```
+
+#### 2. Crear un Bucket en GCS
+
+```bash
+# Crear bucket (debe tener un nombre único globalmente)
+gsutil mb -l us-central1 gs://tu-nombre-de-bucket
+
+# O usando gcloud
+gcloud storage buckets create gs://tu-nombre-de-bucket --location=us-central1
+```
+
+#### 3. Configurar Permisos del Service Account
+
+Tu service account necesita el rol `Storage Object Creator`:
+
+```bash
+gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+  --member="serviceAccount:YOUR_SERVICE_ACCOUNT@YOUR_PROJECT.iam.gserviceaccount.com" \
+  --role="roles/storage.objectCreator"
+```
+
+### Uso en el Webhook
+
+Cuando hagas la petición POST al endpoint `/hooks/burn`, incluye el parámetro `bucket_name`:
+
+```bash
+curl -X POST http://localhost:9000/hooks/burn \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://example.com/video.mp4",
+    "id": "my-video-123",
+    "ass": "...", 
+    "bucket_name": "mi-bucket-videos"
+  }'
+```
+
+### Respuesta
+
+El sistema retornará un JSON con la URL firmada:
+
+```json
+{
+  "status": "success",
+  "url": "https://storage.googleapis.com/mi-bucket-videos/output_20260201_191130.mp4?X-Goog-Algorithm=GOOG4-RSA-SHA256&X-Goog-Credential=..."
+}
+```
+
+Esta URL:
+- ✅ Es válida por **1 hora**
+- ✅ Permite descargar el video **sin autenticación**
+- ✅ Es única para cada video procesado
+- ✅ Incluye un timestamp en el nombre del archivo
+
+### Flujo Completo
+
+1. **create_ass**: Genera el archivo de subtítulos `.ass`
+2. **download**: Descarga el video original
+3. **burn**: Quema subtítulos al video
+4. **upload**: Sube a GCS y genera URL firmada ⬅️ **NUEVO**
+5. **remove**: Elimina archivos temporales (libera RAM)
+
+### Variables de Entorno
+
+| Variable | Descripción | Ejemplo |
+|----------|-------------|---------|
+| `BUCKET_NAME` | Nombre del bucket de GCS | `mi-bucket-videos` |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Ruta al key JSON (solo local) | `/path/to/key.json` |
+
+### Prueba Manual
+
+Puedes probar la subida manualmente:
+
+```bash
+# Configurar el bucket
+export BUCKET_NAME="mi-bucket-videos"
+
+# Ejecutar solo el paso de upload (asume que ya tienes un video procesado)
+make upload ID=test-video-123
+```
+
+### Notas de Seguridad
+
+- 🔒 Las URLs firmadas son seguras y temporales (1 hora)
+- 🗑️ El archivo local se **elimina automáticamente** después de subir para liberar RAM en Cloud Run
+- 🌐 El bucket puede ser público o privado, las URLs firmadas funcionan en ambos casos
